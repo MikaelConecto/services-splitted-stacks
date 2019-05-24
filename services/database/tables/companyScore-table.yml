@@ -1,0 +1,25 @@
+Resources:
+  CompanyScoreTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      # Generate a name based on the stage
+      TableName: ${self:custom.companyScoreTableName}
+      AttributeDefinitions:
+        - AttributeName: companyId
+          AttributeType: N
+      KeySchema:
+        - AttributeName: companyId
+          KeyType: HASH
+      # Set the capacity based on the stage
+      ProvisionedThroughput:
+        ReadCapacityUnits: ${self:custom.tableThroughput}
+        WriteCapacityUnits: ${self:custom.tableThroughput}
+
+Outputs:
+  CompanyScoreTableArn:
+    Value:
+      Fn::GetAtt:
+        - CompanyScoreTable
+        - Arn
+    Export:
+      Name: ${self:custom.stage}-CompanyScoreTableArn

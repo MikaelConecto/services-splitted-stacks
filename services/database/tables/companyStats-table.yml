@@ -1,0 +1,29 @@
+Resources:
+  CompanyStatsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      # Generate a name based on the stage
+      TableName: ${self:custom.companyStatsTableName}
+      AttributeDefinitions:
+        - AttributeName: companyId
+          AttributeType: N
+        - AttributeName: timestamp
+          AttributeType: N
+      KeySchema:
+        - AttributeName: companyId
+          KeyType: HASH
+        - AttributeName: timestamp
+          KeyType: RANGE
+      # Set the capacity based on the stage
+      ProvisionedThroughput:
+        ReadCapacityUnits: ${self:custom.tableThroughput}
+        WriteCapacityUnits: ${self:custom.tableThroughput}
+
+Outputs:
+  CompanyStatsTable:
+    Value:
+      Fn::GetAtt:
+        - CompanyStatsTable
+        - Arn
+    Export:
+      Name: ${self:custom.stage}-CompanyStatsTableArn

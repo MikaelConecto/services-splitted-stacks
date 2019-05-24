@@ -1,0 +1,29 @@
+Resources:
+  ContactAddressAssignmentsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      # Generate a name based on the stage
+      TableName: ${self:custom.contactAddressAssignments}
+      AttributeDefinitions:
+        - AttributeName: companyId
+          AttributeType: N
+        - AttributeName: addressId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: companyId
+          KeyType: HASH
+        - AttributeName: addressId
+          KeyType: RANGE
+      # Set the capacity based on the stage
+      ProvisionedThroughput:
+        ReadCapacityUnits: ${self:custom.tableThroughput}
+        WriteCapacityUnits: ${self:custom.tableThroughput}
+
+Outputs:
+  ContactAddressAssignmentsTableArn:
+    Value:
+      Fn::GetAtt:
+        - ContactAddressAssignmentsTable
+        - Arn
+    Export:
+      Name: ${self:custom.stage}-ContactAddressAssignmentsTableArn

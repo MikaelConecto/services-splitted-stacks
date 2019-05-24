@@ -1,0 +1,22 @@
+service:
+  name: conecto-auth-cognito
+
+package:
+  individually: true
+  excludeDevDependencies: false
+
+custom:
+  stage: ${opt:stage, self:provider.stage}-test
+
+provider:
+  name: aws
+  runtime: nodejs8.10
+  stage: dev
+  region: us-east-1
+  memorySize: 1024
+
+resources:
+  - ${file(user-pools/contacts.yml)}
+  - ${file(identity-pools/contacts.yml)}
+#  - ${file(user-pools/requesters.yml)}
+#  - ${file(identity-pools/requesters.yml)}

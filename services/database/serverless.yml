@@ -1,0 +1,45 @@
+service:
+  name: conecto-database-tables
+
+package:
+  individually: true
+  excludeDevDependencies: false
+
+custom:
+  stage: ${opt:stage, self:provider.stage}test
+  notificationsTableName: ${self:custom.stage}-notifications
+  companyStatsTableName: ${self:custom.stage}-companyStats
+  companyScoreTableName: ${self:custom.stage}-companyScore
+  contactScoreTableName: ${self:custom.stage}-contactScore
+  dealInfosTableName: ${self:custom.stage}-dealInfos
+  companyAddressesTableName: ${self:custom.stage}-companyAddresses
+  contactAddressAssignments: ${self:custom.stage}-contactAddressAssignments
+  tableThroughputs:
+    production: 3
+    default: 1
+  tableThroughput: ${self:custom.tableThroughputs.${self:custom.stage}, self:custom.tableThroughputs.default}
+
+provider:
+  name: aws
+  runtime: nodejs8.10
+  stage: dev
+  region: us-east-1
+  memorySize: 1024
+  environment:
+    COMPANY_STATS_TABLE: ${self:custom.companyStatsTableName}
+    NOTIFICATIONS_TABLE: ${self:custom.notificationsTableName}
+    COMPANYSCORE_TABLE: ${self:custom.companyScoreTableName}
+    CONTACTSCORE_TABLE: ${self:custom.contactScoreTableName}
+    DEALINFOS_TABLE: ${self:custom.dealInfosTableName}
+    COMPANYADDRESSES_TABLE: ${self:custom.companyAddressesTableName}
+    CONTACTADDRESSASSIGNMENTS_TABLE: ${self:custom.contactAddressAssignments}
+    TZ: America/Montreal
+
+resources:
+  - ${file(tables/notifications-table.yml)}
+  - ${file(tables/companyStats-table.yml)}
+  - ${file(tables/companyScore-table.yml)}
+  - ${file(tables/contactScore-table.yml)}
+  - ${file(tables/dealInfos-table.yml)}
+  - ${file(tables/companyAddresses-table.yml)}
+  - ${file(tables/contactAddressAssignments-table.yml)}

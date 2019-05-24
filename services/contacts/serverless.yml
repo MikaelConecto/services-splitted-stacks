@@ -1,0 +1,128 @@
+service:
+  name: conecto-api-contacts
+
+package:
+  individually: true
+  excludeDevDependencies: false
+
+plugins:
+  - serverless-dotenv-plugin
+  - serverless-webpack
+  - serverless-offline
+
+custom:
+  stage: ${opt:stage, self:provider.stage}test
+  webpack:
+    webpackConfig: ../../webpack.config.js
+    includeModules: false
+    packager: 'npm'
+  splitStacks:
+    perFunction: false
+    perType: true
+  dotenv:
+    basePath: ../../
+  cors:
+    production:
+      - ${env:CORS_ORIGIN_1}
+      - ${env:CORS_ORIGIN_2}
+      - ${env:ROOFING_LANDING_1}
+      - ${env:ROOFING_LANDING_2}
+    dev:
+      - ${env:CORS_ORIGIN_1}
+      - ${env:CORS_ORIGIN_2}
+      - ${env:ROOFING_LANDING_1}
+      - ${env:ROOFING_LANDING_2}
+      - ${env:CORS_ORIGIN_local}
+  domains:
+    production: api.conecto.ca
+    dev: dev-api.conecto.ca
+#  customDomain:
+#    domainName: '${self:custom.domains.${self:custom.stage}}'
+#    stage: '${self:custom.stage}'
+#    basePath: '/test-contacts'
+#    createRoute53Record: true
+
+provider:
+  name: aws
+  runtime: nodejs8.10
+  stage: dev
+  region: us-east-1
+  memorySize: 1024
+  environment:
+    COMPANY_STATS_TABLE: ${file(../database/serverless.yml):custom.companyStatsTableName}
+    NOTIFICATIONS_TABLE: ${file(../database/serverless.yml):custom.notificationsTableName}
+    COMPANYSCORE_TABLE: ${file(../database/serverless.yml):custom.companyScoreTableName}
+    CONTACTSCORE_TABLE: ${file(../database/serverless.yml):custom.contactScoreTableName}
+    DEALINFOS_TABLE: ${file(../database/serverless.yml):custom.dealInfosTableName}
+    COMPANYADDRESSES_TABLE: ${file(../database/serverless.yml):custom.companyAddressesTableName}
+    CONTACTADDRESSASSIGNMENTS_TABLE: ${file(../database/serverless.yml):custom.contactAddressAssignments}
+    TZ: ${env:TZ}
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - cognito-idp:*
+      Resource: arn:aws:cognito-idp:*:*:*
+    - Effect: Allow
+      Action:
+        - s3:*
+      Resource: arn:aws:s3:::*
+    - Effect: Allow
+      Action:
+        - logs:*
+      Resource: arn:aws:logs:::*
+    - Effect: Allow
+      Action:
+        - dynamodb:DescribeTable
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+        - dynamodb:BatchGetItem
+      Resource: "arn:aws:dynamodb:us-east-1:*:*"
+  resourcePolicy:
+    - Effect: Allow
+      Principal: "*"
+      Action: execute-api:Invoke
+      Resource:
+        - execute-api:/*/*/*
+
+
+functions:
+  contact-creation:
+    handler: handler.creation
+    environment:
+      USER_POOL:
+        Ref: ContactsCognitoUserPool
+    events:
+      - http:
+          method: get
+          path: /
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+              - X-Amz-User-Agent
+              - Access-Control-Allow-Origin
+              - Access-Control-Allow-Credentials
+              - Access-Control-Allow-Methods
+              - Access-Control-Allow-Headers
+              - withCredentials
+            allowCredentials: true
+            cacheControl: 'max-age=600, s-maxage=600, proxy-revalidate'
+
+
+resources:
+  - ${file(../cognito/user-pools/contacts.yml)}
+  - ${file(../cognito/identity-pools/contacts.yml)}
+  - Outputs:
+      ApiGatewayRestApiId:
+        Value:
+          Ref: ApiGatewayRestApi
+        Export:
+          Name: ${self:custom.stage}-ApiGatewayRestApiId
