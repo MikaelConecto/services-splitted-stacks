@@ -1,0 +1,114 @@
+service:
+  name: conecto-api-notification
+
+package:
+  individually: true
+  excludeDevDependencies: false
+
+plugins:
+  - serverless-dotenv-plugin
+  - serverless-webpack
+  - serverless-offline
+
+custom:
+  stage: ${opt:stage, self:provider.stage}
+  webpack:
+    webpackConfig: ../../webpack.config.js
+    includeModules: false
+    packager: 'npm'
+  splitStacks:
+    perFunction: false
+    perType: true
+  dotenv:
+    basePath: ../../
+  notifyContactCustomerEvents:
+    production:
+      - schedule: cron(0 13 * * ? *) # 9h
+      - schedule: cron(0 16 * * ? *) # 12h
+      - schedule: cron(0 22 * * ? *) # 18h
+    dev:
+      - http:
+          method: get
+          path: notify-contact-customer
+          cors:
+            origin: '*' # Must stay * for Zapier
+  environment: ${file(../contacts/serverless.yml):custom.environment}
+
+provider:
+  name: aws
+  runtime: nodejs8.10
+  stage: dev
+  region: us-east-1
+  memorySize: 1024
+  environment:
+    COMPANY_STATS_TABLE: ${file(../database/serverless.yml):custom.companyStatsTableName}
+    NOTIFICATIONS_TABLE: ${file(../database/serverless.yml):custom.notificationsTableName}
+    COMPANYSCORE_TABLE: ${file(../database/serverless.yml):custom.companyScoreTableName}
+    CONTACTSCORE_TABLE: ${file(../database/serverless.yml):custom.contactScoreTableName}
+    DEALINFOS_TABLE: ${file(../database/serverless.yml):custom.dealInfosTableName}
+    COMPANYADDRESSES_TABLE: ${file(../database/serverless.yml):custom.companyAddressesTableName}
+    CONTACTADDRESSASSIGNMENTS_TABLE: ${file(../database/serverless.yml):custom.contactAddressAssignments}
+    TZ: ${env:TZ}
+  apiGateway:
+    restApiId:
+      'Fn::ImportValue': ${self:custom.stage}-ApiGatewayRestApiId
+    restApiRootResourceId:
+      'Fn::ImportValue': ${self:custom.stage}-ApiGatewayRestApiRootResourceId
+  ContactsCognitoUserPool:
+    'Fn::ImportValue': ${self:custom.stage}-ContactsCognitoUserPool
+  iamRoleStatements: ${file(../contacts/serverless.yml):provider.iamRoleStatements}
+
+functions:
+
+  fetch-notification-infos:
+    handler: handler.fetch
+    events:
+      - http:
+          authorizer: aws_iam
+          method: get
+          path: notification/{encryptedDealId}/{encryptedContactId}
+          cors:
+            origins: ${file(../contacts/serverless.yml):custom.cors.${self:custom.stage}
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+              - X-Amz-User-Agent
+              - Access-Control-Allow-Origin
+              - Access-Control-Allow-Credentials
+              - Access-Control-Allow-Methods
+              - Access-Control-Allow-Headers
+              - withCredentials
+            allowCredentials: true
+            cacheControl: 'max-age=600, s-maxage=600, proxy-revalidate'
+
+  fetch-emitted-notifications:
+    handler: handler.fetchEmittedDeals
+    events:
+      - http:
+          authorizer: aws_iam
+          method: get
+          path: notifications/{requestType}
+          cors:
+            origins: ${file(../contacts/serverless.yml):custom.cors.${self:custom.stage}
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+              - X-Amz-User-Agent
+              - Access-Control-Allow-Origin
+              - Access-Control-Allow-Credentials
+              - Access-Control-Allow-Methods
+              - Access-Control-Allow-Headers
+              - withCredentials
+            allowCredentials: true
+            cacheControl: 'max-age=600, s-maxage=600, proxy-revalidate'
+
+  notify-contact-customer:
+    handler: handler.notifyContactCustomer
+    events:
+      - ${self:custom.notifyContactCustomerEvents.${self:custom.stage}

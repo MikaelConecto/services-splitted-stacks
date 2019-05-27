@@ -6,7 +6,7 @@ package:
   excludeDevDependencies: false
 
 custom:
-  stage: ${opt:stage, self:provider.stage}test
+  stage: ${opt:stage, self:provider.stage}
   notificationsTableName: ${self:custom.stage}-notifications
   companyStatsTableName: ${self:custom.stage}-companyStats
   companyScoreTableName: ${self:custom.stage}-companyScore

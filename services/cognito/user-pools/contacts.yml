@@ -74,7 +74,11 @@ Outputs:
   ContactsUserPoolId:
     Value:
       Ref: ContactsCognitoUserPool
+    Export:
+      Name: ${self:custom.stage}-ContactsCognitoUserPool
 
   ContactsUserPoolClientId:
     Value:
       Ref: ContactsCognitoUserPoolClient
+    Export:
+      Name: ${self:custom.stage}-ContactsCognitoUserPoolClient
