@@ -22,7 +22,6 @@ custom:
   dotenv:
     basePath: ../../
   staticMapsBucketName: ${self:custom.stage}-static-maps
-  environment: ${file(../contacts/serverless.yml):custom.environment}
 
 provider:
   name: aws

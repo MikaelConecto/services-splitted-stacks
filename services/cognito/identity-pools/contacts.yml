@@ -77,3 +77,5 @@ Outputs:
   ContactsIdentityPoolId:
     Value:
       Ref: ContactsCognitoIdentityPool
+    Export:
+      Name: ${self:custom.stage}-ContactsCognitoIdentityPool

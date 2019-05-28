@@ -109,3 +109,10 @@ export const callRequester: APIGatewayProxyHandler = async event => {
     return new ErrorFactory().build(err)
   }
 }
+
+export const test: APIGatewayProxyHandler = async event => {
+  return new ResponseFactory().build({
+    status: 200,
+    data: process.env,
+  }, event.headers.origin)
+}

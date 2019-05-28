@@ -21,7 +21,6 @@ custom:
     perType: true
   dotenv:
     basePath: ../../
-  environment: ${file(../contacts/serverless.yml):custom.environment}
 
 provider:
   name: aws

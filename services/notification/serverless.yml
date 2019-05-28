@@ -32,7 +32,6 @@ custom:
           path: notify-contact-customer
           cors:
             origin: '*' # Must stay * for Zapier
-  environment: ${file(../contacts/serverless.yml):custom.environment}
 
 provider:
   name: aws

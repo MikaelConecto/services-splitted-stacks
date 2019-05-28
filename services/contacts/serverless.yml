@@ -9,6 +9,7 @@ plugins:
   - serverless-dotenv-plugin
   - serverless-webpack
   - serverless-offline
+  - serverless-domain-manager # need to create a valid "Custom Domain Names" in API Gateway before
 
 custom:
   stage: ${opt:stage, self:provider.stage}
@@ -36,11 +37,11 @@ custom:
   domains:
     production: api.conecto.ca
     dev: dev-api.conecto.ca
-#  customDomain:
-#    domainName: '${self:custom.domains.${self:custom.stage}}'
-#    stage: '${self:custom.stage}'
-#    basePath: '/test-contacts'
-#    createRoute53Record: true
+  customDomain:
+    domainName: '${self:custom.domains.${self:custom.stage}}'
+    stage: '${self:custom.stage}'
+    basePath: ''
+    createRoute53Record: true
 
 provider:
   name: aws

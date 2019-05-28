@@ -21,7 +21,6 @@ custom:
     perType: true
   dotenv:
     basePath: ../../
-  environment: ${file(../contacts/serverless.yml):custom.environment}
 
 provider:
   name: aws
@@ -72,3 +71,18 @@ functions:
               - withCredentials
             allowCredentials: true
             cacheControl: 'max-age=600, s-maxage=600, proxy-revalidate'
+
+
+resources:
+  Outputs:
+    ContactsUserPoolId:
+      Value:
+        'Fn::ImportValue': ${self:custom.stage}-ContactsCognitoUserPool
+    ContactsUserPoolClientId:
+      Value:
+        'Fn::ImportValue': ${self:custom.stage}-ContactsCognitoUserPoolClient
+    ContactsCognitoIdentityPool:
+      Value:
+        'Fn::ImportValue': ${self:custom.stage}-ContactsCognitoIdentityPool
+    ApiGatewayRestApiId:
+      Value: ${self:provider.apiGateway.restApiId}
