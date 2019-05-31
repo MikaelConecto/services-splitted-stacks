@@ -78,6 +78,8 @@ export const creation: APIGatewayProxyHandler = async event => {
       'locale',
     ])
 
+
+
     const mailchimpClient = new AxiosClient({
       baseURL: process.env.MAILCHIMP_API_URL,
       timeout: 3000,

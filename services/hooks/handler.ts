@@ -141,7 +141,7 @@ export const onNewDeal: APIGatewayProxyHandler = async event => {
         'markers=color:0x35b78e|' +
         mapCenter +
         '&' +
-        'key=AIzaSyAGiTAyH3sMyqsKBgF86Af2cFSqbd3ntCM'
+        'key=' + process.env.GOOGLE_MAP_API_KEY
 
       downloadFromUrlToS3(mapUrl, `${dealInfosUUID}.png`).then(result => {
         logger(
@@ -190,6 +190,12 @@ export const onNewDeal: APIGatewayProxyHandler = async event => {
           longitude: dealInfo.custom_fields.longitude,
           createdAt: dealInfosDateNow,
           updatedAt: dealInfosDateNow,
+        },
+      })
+
+      await Deals.update(dealInfo.id, {
+        custom_fields: {
+          uniqueId: dealInfosUUID,
         },
       })
     } else {

@@ -5,6 +5,9 @@ package:
   individually: true
   excludeDevDependencies: false
 
+custom:
+  stage: ${opt:stage, self:provider.stage}
+
 provider:
   name: aws
   runtime: nodejs8.10
@@ -12,26 +15,27 @@ provider:
   region: us-east-1
   memorySize: 1024
 
-Resources:
-  StaticMapsBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName: ${self:custom.stage}-static-maps
-      # Set the CORS policy
-      CorsConfiguration:
-        CorsRules:
-          -
-            AllowedOrigins:
-              - '*'
-            AllowedHeaders:
-              - '*'
-            AllowedMethods:
-              - GET
-              - PUT
-              - POST
-              - DELETE
-              - HEAD
-            MaxAge: 3000
+resources:
+  Resources:
+    StaticMapsBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${self:custom.stage}-static-maps
+        # Set the CORS policy
+        CorsConfiguration:
+          CorsRules:
+            -
+              AllowedOrigins:
+                - '*'
+              AllowedHeaders:
+                - '*'
+              AllowedMethods:
+                - GET
+                - PUT
+                - POST
+                - DELETE
+                - HEAD
+              MaxAge: 3000
 
 # Print out the name of the bucket that is created
 Outputs:

@@ -10,6 +10,7 @@ import BodyParserTransformer from '../../src/Transformers/BodyParserTransformer'
 import ContactEmployeesTransformer from '../../src/Transformers/ContactEmployeesTransformer'
 import ContactsController from '../../src/Controllers/ContactsController'
 import AxiosClient from '../../src/Clients/AxiosClient'
+import StripeClient from '../../src/Clients/StripeClient'
 
 import logger from '../../src/Helpers/logger'
 
@@ -862,6 +863,66 @@ export const updateCompanyOwner: APIGatewayProxyHandler = async event => {
     )
   } catch (err) {
     logger('Company Change Owner', 'all', 'end', 'error')
+    return new ErrorFactory().build(err, event.headers.origin)
+  }
+}
+
+export const listCompanyCharges: APIGatewayProxyHandler = async event => {
+  logger('Company List Charges', 'all', 'begin')
+  try {
+    logger('Company List Charges', 'all', 'read', 'Before Cognito Values')
+    const connectedUser = await cognitoIdentityClient.getUser(
+      cognitoIdentityClient.getEventAuthValues(event)
+    )
+    logger(
+      'Company List Charges',
+      'all',
+      'read',
+      'After Cognito Values',
+      `ContactId ${connectedUser['custom:contactId']}, CompanyId ${
+        connectedUser['custom:companyId']
+        }`
+    )
+
+    if (connectedUser['custom:isActive'] === '0') {
+      logger(
+        'Company List Charges',
+        'all',
+        'not active',
+        JSON.stringify(connectedUser, null, 2)
+      )
+      throw 'The user is not active'
+    }
+
+    const companyId = parseInt(connectedUser['custom:companyId'])
+
+    const Contacts = new ContactsController(contactsClient)
+
+    const companyInfos = await Contacts.getInfoById(companyId)
+
+    const stripeClient = new StripeClient()
+    let charges = null
+
+    if (typeof companyInfos.data.data.custom_fields.stripeCustomer !== 'undefined') {
+      charges = await stripeClient.listCharges(
+        companyInfos.data.data.custom_fields.stripeCustomer
+      )
+    }
+
+    logger('Company List Charges', 'all', 'end')
+
+    return new ResponseFactory().build(
+      {
+        status: 200,
+        data: {
+          success: true,
+          charges,
+        },
+      },
+      event.headers.origin
+    )
+  } catch (err) {
+    logger('Company List Charges', 'all', 'end', 'error')
     return new ErrorFactory().build(err, event.headers.origin)
   }
 }

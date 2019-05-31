@@ -53,6 +53,16 @@ class DealsController {
     }
   }
 
+  async update(id, data) {
+    try {
+      const responseDeal = await this.model.update(id, data)
+
+      return responseDeal
+    } catch (e) {
+      throw new Error(e)
+    }
+  }
+
   async updateAllFromParams(params, data, condition) {
     try {
       const dealsId = []

@@ -29,6 +29,8 @@ export default async (url, filename, callback) => {
       contentType = response.headers['content-type'];
       response.data.pipe(uploadStream());
     }
+  }).catch((error) => {
+    console.log('S3 UPLOAD ERROR', error)
   });
 
   return promise

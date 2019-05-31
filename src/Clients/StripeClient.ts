@@ -119,6 +119,26 @@ class StripeClient {
       )
     })
   }
+
+  listCharges(
+    customerId: string,
+  ): Promise<any> {
+    return new Promise((resolve, reject) => {
+      this.engine.charges.list(
+        {
+          customer: customerId, // obtained with Stripe.js
+          limit: 100,
+        },
+        function(err, result) {
+          if (err) {
+            reject(err)
+          } else {
+            resolve(result)
+          }
+        }
+      )
+    })
+  }
 }
 
 export default StripeClient

@@ -121,7 +121,7 @@ export const onAcceptation: APIGatewayProxyHandler = async event => {
         ExpressionAttributeValues: {
           ':answer': 'Accepted but already owned',
           ':answerType': answerType,
-          ':answeredBy': connectedUser.sub,
+          ':answeredBy': connectedUser['custom:contactId'],
           ':answeredAt': timeNow,
           ':updatedAt': timeNow,
         },
@@ -162,7 +162,7 @@ export const onAcceptation: APIGatewayProxyHandler = async event => {
         ExpressionAttributeValues: {
           ':answer': 'Accepted too late',
           ':answerType': answerType,
-          ':answeredBy': connectedUser.sub,
+          ':answeredBy': connectedUser['custom:contactId'],
           ':answeredAt': timeNow,
           ':updatedAt': timeNow,
         },
@@ -216,7 +216,7 @@ export const onAcceptation: APIGatewayProxyHandler = async event => {
         const transaction = await stripeClient.chargeAmount(
           companyInfos.data.data.custom_fields.stripeCustomer,
           parseInt(process.env.OPPORTUNITY_COST),
-          `${currentDeal.data.data.id} - Conecto ${process.env.SERVICE_NAME} - ${
+          `${currentDeal.data.data.custom_fields.uniqueId} - Conecto ${process.env.SERVICE_NAME} - ${
             currentDeal.data.data.name
             }`
         )
@@ -240,7 +240,7 @@ export const onAcceptation: APIGatewayProxyHandler = async event => {
           ExpressionAttributeValues: {
             ':answer': 'Accepted',
             ':answerType': answerType,
-            ':answeredBy': connectedUser.sub,
+            ':answeredBy': connectedUser['custom:contactId'],
             ':transactionId': transaction.id,
             ':answeredAt': timeNow,
             ':updatedAt': timeNow,
@@ -282,7 +282,7 @@ export const onAcceptation: APIGatewayProxyHandler = async event => {
               ExpressionAttributeValues: {
                 ':answer': 'Accepted',
                 ':answerType': 'colleague',
-                ':answeredBy': connectedUser.sub,
+                ':answeredBy': connectedUser['custom:contactId'],
                 ':transactionId': transaction.id,
                 ':answeredAt': timeNow,
                 ':updatedAt': timeNow,
@@ -457,7 +457,7 @@ export const onRejection: APIGatewayProxyHandler = async event => {
         ExpressionAttributeValues: {
           ':answer': 'Rejected but already owned',
           ':answerType': answerType,
-          ':answeredBy': connectedUser.sub,
+          ':answeredBy': connectedUser['custom:contactId'],
           ':answeredAt': timeNow,
           ':updatedAt': timeNow,
         },
@@ -495,7 +495,7 @@ export const onRejection: APIGatewayProxyHandler = async event => {
         ExpressionAttributeValues: {
           ':answer': 'Rejected',
           ':answerType': answerType,
-          ':answeredBy': connectedUser.sub,
+          ':answeredBy': connectedUser['custom:contactId'],
           ':answeredAt': timeNow,
           ':updatedAt': timeNow,
         },
