@@ -5,6 +5,7 @@
   "main": "handler.js",
   "scripts": {
     "deploy": "npm run database:deploy && npm run s3:deploy && npm run api-contacts:deploy && npm run api-company:deploy && npm run api-deals:deploy && npm run api-hooks:deploy && npm run api-leads:deploy && npm run api-notification:deploy && npm run api-stats:deploy && npm run api-twilio:deploy",
+    "deploy-prod": "NODE_ENV=production npm run database:deploy -- --stage production && NODE_ENV=production npm run s3:deploy -- --stage production && NODE_ENV=production npm run api-contacts:deploy -- --stage production && NODE_ENV=production npm run api-company:deploy -- --stage production && NODE_ENV=production npm run api-deals:deploy -- --stage production && NODE_ENV=production npm run api-hooks:deploy -- --stage production && NODE_ENV=production npm run api-leads:deploy -- --stage production && NODE_ENV=production npm run api-notification:deploy -- --stage production && NODE_ENV=production npm run api-stats:deploy -- --stage production && NODE_ENV=production npm run api-twilio:deploy -- --stage production",
     "remove": "npm run database:remove && npm run s3:remove && npm run api-contacts:remove && npm run api-company:remove && npm run api-deals:remove && npm run api-hooks:remove && npm run api-leads:remove && npm run api-notification:remove && npm run api-stats:remove && npm run api-twilio:remove",
     "format": "npm run api-contacts:format && npm run api-company:format",
     "database:deploy": "cd ./services/database && node --max-old-space-size=4096 ../../node_modules/serverless/bin/serverless deploy -v",

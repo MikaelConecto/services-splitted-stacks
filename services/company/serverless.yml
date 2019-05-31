@@ -241,3 +241,27 @@ functions:
               - withCredentials
             allowCredentials: true
             cacheControl: 'max-age=600, s-maxage=600, proxy-revalidate'
+
+  list-company-charges:
+    handler: handler.listCompanyCharges
+    events:
+      - http:
+          authorizer: aws_iam
+          method: get
+          path: company/charges
+          cors:
+            origins: ${file(../contacts/serverless.yml):custom.cors.${self:custom.stage}
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+              - X-Amz-User-Agent
+              - Access-Control-Allow-Origin
+              - Access-Control-Allow-Credentials
+              - Access-Control-Allow-Methods
+              - Access-Control-Allow-Headers
+              - withCredentials
+            allowCredentials: true
+            cacheControl: 'max-age=600, s-maxage=600, proxy-revalidate'
