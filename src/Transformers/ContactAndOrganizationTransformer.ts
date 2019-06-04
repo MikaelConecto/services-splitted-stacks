@@ -25,6 +25,9 @@ class ContactAndOrganizationTransformer implements DataTransformer {
           phone: response.contact.data.phone,
           created_at: response.contact.data.created_at,
           updated_at: response.contact.data.updated_at,
+          custom_fields: {
+            conditions: response.contact.data.custom_fields.conditions,
+          },
         },
       },
     }

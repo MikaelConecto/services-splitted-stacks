@@ -9,6 +9,7 @@ import TwilioClient from '../../src/Clients/TwilioClient'
 
 import DataValidator from '../../src/Validators/DataValidator'
 import ContactCreationSchema from '../../src/ValidationSchemas/ContactCreationSchema'
+import ContactFastCreationSchema from '../../src/ValidationSchemas/ContactFastCreationSchema'
 import ContactAddUserSchema from '../../src/ValidationSchemas/ContactAddUserSchema'
 import ContactUpdateSchema from '../../src/ValidationSchemas/ContactUpdateSchema'
 
@@ -77,8 +78,6 @@ export const creation: APIGatewayProxyHandler = async event => {
       'subscribeEmail',
       'locale',
     ])
-
-
 
     const mailchimpClient = new AxiosClient({
       baseURL: process.env.MAILCHIMP_API_URL,
@@ -207,6 +206,201 @@ export const creation: APIGatewayProxyHandler = async event => {
       'creation',
       'Contact Score'
     )
+    const contactScore = dynamoDb.put({
+      TableName: process.env.CONTACTSCORE_TABLE,
+      Item: {
+        userId: parsedData.cognitoSub,
+        companyId: contact.data.company.id,
+        contactId: contact.data.contact.id,
+        score: 0,
+        isActive: 1,
+        createdAt: dateNow,
+        updatedAt: dateNow,
+      },
+    })
+    logger(
+      'Contractor Creation',
+      'generic',
+      'write',
+      'creation',
+      'Company Address'
+    )
+    const companyAddress = dynamoDb.put({
+      TableName: process.env.COMPANYADDRESSES_TABLE,
+      Item: {
+        userId: parsedData.cognitoSub,
+        companyId: contact.data.company.id,
+        addressId: addressUUID,
+        number: parsedData.companyNumber,
+        address: parsedData.companyAddress,
+        city: contact.data.company.address.city,
+        postal_code: contact.data.company.address.postal_code,
+        state: contact.data.company.address.state,
+        country: contact.data.company.address.country,
+        latitude: parsedData.companyLatitude,
+        longitude: parsedData.companyLongitude,
+        radius: process.env.BASE_ADDRESS_RADIUS,
+        isActive: 1,
+        createdAt: dateNow,
+        updatedAt: dateNow,
+      },
+    })
+    logger(
+      'Contractor Creation',
+      'generic',
+      'write',
+      'creation',
+      'Contact Addresses Assignement'
+    )
+    const contactAddressAssignements = dynamoDb.put({
+      TableName: process.env.CONTACTADDRESSASSIGNMENTS_TABLE,
+      Item: {
+        userId: parsedData.cognitoSub,
+        companyId: contact.data.company.id,
+        addressId: addressUUID,
+        contactId: contact.data.contact.id,
+        isActive: 1,
+        createdAt: dateNow,
+        updatedAt: dateNow,
+      },
+    })
+    logger(
+      'Contractor Creation',
+      'generic',
+      'update',
+      'request',
+      'Cognito User'
+    )
+
+    const updateUser = cognitoIdentityClient.updateUserAttributes(
+      {
+        cognitoSub: parsedData.cognitoSub,
+        userPoolId: process.env.USER_POOL,
+      },
+      {
+        'custom:contactId': contact.data.contact.id,
+        'custom:companyId': contact.data.company.id,
+        'custom:isAdmin': 1,
+        'custom:isActive': 1,
+      }
+    )
+
+    logger(
+      'Contractor Creation',
+      'generic',
+      'read',
+      'request',
+      'Active compagnies'
+    )
+
+    const companiesWithScores = await dynamoDb.scan({
+      TableName: process.env.COMPANYSCORE_TABLE,
+      ProjectionExpression: 'companyId, isActive',
+    })
+    const activeCompanies = companiesWithScores.Items.filter(
+      company => company.isActive === 1
+    ).map(company => company.companyId)
+
+    logger(
+      'Contractor Creation',
+      'generic',
+      'write',
+      'request',
+      'Initial stats'
+    )
+
+    const statQuery = dynamoDb.put({
+      TableName: process.env.COMPANY_STATS_TABLE,
+      Item: {
+        companyId: parseInt(contact.data.company.id),
+        timestamp: dateNow,
+        firstContactAverage: 0,
+        acceptationDelayAverage: 0,
+        opportunitiesCount: 0,
+        competitorCount: (activeCompanies.length > 0) ? activeCompanies.length - 1 : 0,
+        percentAcceptation: 0,
+      },
+    })
+
+    await Promise.all([
+      contactAddressAssignements,
+      companyAddress,
+      updateUser,
+      companyScore,
+      contactScore,
+      statQuery,
+    ])
+
+    logger('Contractor Creation', 'generic', 'end')
+    return new ResponseFactory().build(contact, event.headers.origin)
+  } catch (err) {
+    logger('Contractor Creation', 'generic', 'end', 'error')
+    return new ErrorFactory().build(err, event.headers.origin)
+  }
+}
+
+export const fastCreation: APIGatewayProxyHandler = async event => {
+  logger('Contractor FAST Creation', 'generic', 'begin')
+  try {
+    const parsedData = new BodyParserTransformer().transform(event.body)
+    logger(
+      'Contractor FAST Creation',
+      'generic',
+      'before',
+      'request',
+      `Entry for ${parsedData.companyName}, ${parsedData.firstname} ${
+        parsedData.lastname
+        }, phone: ${parsedData.tel}, email: ${parsedData.email}`
+    )
+
+    const validator = new DataValidator(ContactFastCreationSchema)
+    const contactTransformer = new ContactCreationTransformer([
+      'companyName',
+      'companyAddress',
+      'companyCity',
+      'companyPostalCode',
+      'companyLatitude',
+      'companyLongitude',
+      'firstname',
+      'lastname',
+      'tel',
+      'email',
+    ])
+
+    if (parsedData.companyAddress !== null && parsedData.companyAddress.indexOf(parsedData.companyNumber) >= 0) {
+      parsedData.companyAddress = parsedData.companyAddress.replace(parsedData.companyNumber, '')
+    }
+
+    const congitoUser = await cognitoIdentityClient.createUser(parsedData)
+
+    parsedData.cognitoSub = congitoUser.User.Username
+    parsedData.byFastTrack = 1
+
+    const Contacts = new ContactsController(
+      contactsClient,
+      contactTransformer,
+      validator
+    )
+    const contact = await Contacts.create(parsedData)
+
+    // Score creation
+    const dateNow = Date.now()
+    const addressUUID = nanoidGenerate(
+      '1234567890abcdefghijklmnopqrstuvwxyz',
+      10
+    )
+
+    const companyScore = dynamoDb.put({
+      TableName: process.env.COMPANYSCORE_TABLE,
+      Item: {
+        companyId: contact.data.company.id,
+        score: 0,
+        isActive: 1,
+        createdAt: dateNow,
+        updatedAt: dateNow,
+      },
+    })
+
     const contactScore = dynamoDb.put({
       TableName: process.env.CONTACTSCORE_TABLE,
       Item: {
@@ -1403,6 +1597,92 @@ export const updateInfos: APIGatewayProxyHandler = async event => {
     )
   } catch (err) {
     logger('Contractor First Contact', 'all', 'end', 'error')
+    return new ErrorFactory().build(err, event.headers.origin)
+  }
+}
+
+export const acceptTOS: APIGatewayProxyHandler = async event => {
+  logger('Contractor Accept TOS', 'all', 'begin', '', ``)
+  try {
+    logger('Contractor Accept TOS', 'all', 'read', 'Before Cognito Values')
+
+    const connectedUser = await cognitoIdentityClient.getUser(
+      cognitoIdentityClient.getEventAuthValues(event)
+    )
+
+    logger(
+      'Contractor Accept TOS',
+      'all',
+      'read',
+      'After Cognito Values',
+      `ContactId ${connectedUser['custom:contactId']}, CompanyId ${
+        connectedUser['custom:companyId']
+        }`
+    )
+
+    if (connectedUser['custom:isActive'] === '0') {
+      logger(
+        'Contractor Accept TOS',
+        'all',
+        'not active',
+        '',
+        JSON.stringify(connectedUser, null, 2)
+      )
+      throw 'The user is not active'
+    }
+
+    const parsedData = new BodyParserTransformer().transform(event.body)
+    const companyId = parseInt(connectedUser['custom:companyId'])
+    const contactId = parseInt(connectedUser['custom:contactId'])
+
+    const Contacts = new ContactsController(contactsClient)
+
+    logger(
+      'Contractor Accept TOS',
+      'all',
+      'update',
+      'verification',
+      `Fields validation`
+    )
+
+    const company = Contacts.update(companyId, {
+      custom_fields: {
+        conditions: 1,
+      }
+    })
+    const contact = Contacts.update(contactId, {
+      custom_fields: {
+        conditions: 1,
+      }
+    })
+
+    logger('Contractor Accept TOS', 'all', 'update', 'request', `Cognito`)
+
+    const cognitoUser = cognitoIdentityClient.updateUserAttributes(
+      {
+        cognitoSub: connectedUser['sub'],
+        userPoolId: process.env.USER_POOL,
+      },
+      {
+        email_verified: true,
+      }
+    )
+
+    await Promise.all([company, contact, cognitoUser])
+
+    logger('Contractor Accept TOS', 'all', 'end')
+
+    return new ResponseFactory().build(
+      {
+        status: 200,
+        data: {
+          success: true,
+        },
+      },
+      event.headers.origin
+    )
+  } catch (err) {
+    logger('Contractor Accept TOS', 'all', 'end', 'error')
     return new ErrorFactory().build(err, event.headers.origin)
   }
 }

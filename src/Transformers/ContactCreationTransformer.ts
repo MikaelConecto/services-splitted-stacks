@@ -54,6 +54,7 @@ class ContactCreationTransformer implements DataTransformer {
         isActive: 1,
         locale: data.locale,
         byFastTrack: data.byFastTrack ? data.byFastTrack : 0,
+        conditions: data.byFastTrack === 1 ? 0 : 1,
         verified: data.byFastTrack === 1 ? 0 : 1,
       },
     }
