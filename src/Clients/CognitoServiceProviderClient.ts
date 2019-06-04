@@ -1,5 +1,7 @@
 import { CognitoIdentityServiceProvider } from 'aws-sdk'
 import { APIGatewayEvent } from 'aws-lambda'
+import nanoidGenerate from 'nanoid/generate'
+
 import CognitoServiceProviderUser from '../Interfaces/CognitoServiceProviderUser'
 
 class CognitoServiceProviderClient {
@@ -105,6 +107,36 @@ class CognitoServiceProviderClient {
     }
 
     return 'No user'
+  }
+
+  async createUser(data) {
+    const cognitoUser = await this.engine.adminCreateUser({
+      UserPoolId: process.env.USER_POOL,
+      Username: data.email,
+      TemporaryPassword: `${nanoidGenerate('abcdefghijklmnopqrstuvwxyz', 4)}${nanoidGenerate('ABCDEFGHIJKLMNOPQRSTUVWXYZ', 4)}${nanoidGenerate('0123456789', 4)}`,
+      DesiredDeliveryMediums: ['EMAIL'],
+      UserAttributes: [{
+        Name: 'given_name',
+        Value: data.firstname,
+      }, {
+        Name: 'family_name',
+        Value: data.lastname,
+      }, {
+        Name: 'phone_number',
+        Value: data.tel,
+      }, {
+        Name: 'address',
+        Value: data.companyNumber +
+          ' ' +
+          data.companyAddress +
+          ' | ' +
+          data.companyCity +
+          ' | ' +
+          data.companyPostalCode,
+      }]
+    }).promise()
+
+    return cognitoUser
   }
 }
 

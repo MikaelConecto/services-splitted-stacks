@@ -12,6 +12,7 @@ class ContactEmployeesTransformer implements DataTransformer {
         .filter(employee => employee.data.custom_fields.isActive === '1')
         .forEach(employee => {
           const employeeToPush = {
+            i: employee.data.id,
             id: cryptr.encrypt(employee.data.id),
             isCurrentUser: false,
             name: employee.data.name,

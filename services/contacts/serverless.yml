@@ -28,12 +28,14 @@ custom:
       - ${env:CORS_ORIGIN_2}
       - ${env:ROOFING_LANDING_1}
       - ${env:ROOFING_LANDING_2}
+      - ${env:CORS_ORIGIN_fasttrack}
     dev:
       - ${env:CORS_ORIGIN_1}
       - ${env:CORS_ORIGIN_2}
       - ${env:ROOFING_LANDING_1}
       - ${env:ROOFING_LANDING_2}
       - ${env:CORS_ORIGIN_local}
+      - ${env:CORS_ORIGIN_fasttrack}
   domains:
     production: api.conecto.ca
     dev: dev-api.conecto.ca
@@ -101,6 +103,18 @@ functions:
       - http:
           method: post
           path: contact
+          cors:
+            origins: ${self:custom.cors.${self:custom.stage}
+
+  contact-fast-creation:
+    handler: handler.fastCreation
+    environment:
+      USER_POOL:
+        Ref: ContactsCognitoUserPool
+    events:
+      - http:
+          method: post
+          path: contact/fast-signup
           cors:
             origins: ${self:custom.cors.${self:custom.stage}
 
@@ -321,6 +335,33 @@ functions:
           authorizer: aws_iam
           method: put
           path: contact
+          cors:
+            origins: ${self:custom.cors.${self:custom.stage}
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+              - X-Amz-User-Agent
+              - Access-Control-Allow-Origin
+              - Access-Control-Allow-Credentials
+              - Access-Control-Allow-Methods
+              - Access-Control-Allow-Headers
+              - withCredentials
+            allowCredentials: true
+            cacheControl: 'max-age=600, s-maxage=600, proxy-revalidate'
+
+  accept-tos:
+    handler: handler.acceptTOS
+    environment:
+      USER_POOL:
+        Ref: ContactsCognitoUserPool
+    events:
+      - http:
+          authorizer: aws_iam
+          method: post
+          path: contact/accept-tos
           cors:
             origins: ${self:custom.cors.${self:custom.stage}
             headers:
