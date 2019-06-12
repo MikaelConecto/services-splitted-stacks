@@ -91,6 +91,9 @@ export const onNewDeal: APIGatewayProxyHandler = async event => {
 
     const companiesQuery = await Contacts.searchFor({
       is_organization: true,
+      custom_fields: {
+        verified: 1,
+      }
     })
 
     const companies = companiesQuery.data.items

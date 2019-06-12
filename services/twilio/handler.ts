@@ -1,4 +1,5 @@
 import { APIGatewayProxyHandler } from 'aws-lambda'
+import qs from 'qs'
 import TwilioClient from '../../src/Clients/TwilioClient'
 
 import ResponseFactory from '../../src/Factories/ResponseFactory'
@@ -6,11 +7,14 @@ import ErrorFactory from '../../src/Factories/ErrorFactory'
 import CognitoServiceProviderClient from '../../src/Clients/CognitoServiceProviderClient'
 import DynamoDBClient from '../../src/Clients/DynamoDBClient'
 import BodyParserTransformer from '../../src/Transformers/BodyParserTransformer'
+import PhoneNumberTransformer from '../../src/Transformers/PhoneNumberTransformer'
 
 const twilioClient = new TwilioClient()
 
 const dynamoDb = new DynamoDBClient()
 const cognitoIdentityClient = new CognitoServiceProviderClient()
+
+const phoneTransformer = new PhoneNumberTransformer()
 
 export const callRequester: APIGatewayProxyHandler = async event => {
   try {
@@ -110,9 +114,43 @@ export const callRequester: APIGatewayProxyHandler = async event => {
   }
 }
 
-export const test: APIGatewayProxyHandler = async event => {
+export const receiveSms: APIGatewayProxyHandler = async event => {
+  const sms = qs.parse(event.body)
+  const message = sms.Body
+  const from = sms.From
+
+  if (message.toLowerCase().indexOf('conecto') >= 0) {
+    const users = await cognitoIdentityClient.listUsers(null, {
+      Filter: `phone_number = "${from}"`,
+    })
+
+    await Promise.all(users.Users.map((user) => {
+      const updateCognitoUser = cognitoIdentityClient.updateUserAttributes(
+        {
+          cognitoSub: user.Username,
+          userPoolId: process.env.USER_POOL,
+        },
+        {
+          'phone_number_verified': true,
+        }
+      )
+
+      return updateCognitoUser
+    }))
+
+    await twilioClient.sendSMS(
+      phoneTransformer.transform(from), '* Message de Conecto *\n\nMerci d\'avoir confirmé votre numéro de cellulaire'
+    )
+  } else {
+    await twilioClient.sendSMS(
+      phoneTransformer.transform(from), '* Message de Conecto *\n\nNous ne comprennons pas cette réponse'
+    )
+  }
+
   return new ResponseFactory().build({
     status: 200,
-    data: process.env,
+    data: {
+      success: true,
+    },
   }, event.headers.origin)
 }

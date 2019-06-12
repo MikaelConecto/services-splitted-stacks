@@ -35,6 +35,7 @@
     "api-stats:remove": "cd ./services/stats && node --max-old-space-size=4096 ../../node_modules/serverless/bin/serverless remove -v",
     "api-stats:offline": "cd ./services/stats && node --max-old-space-size=4096 ../../node_modules/serverless/bin/serverless offline start -v",
     "api-twilio:deploy": "cd ./services/twilio && node --max-old-space-size=4096 ../../node_modules/serverless/bin/serverless deploy -v",
+    "api-twilio:deploy-single": "cd ./services/twilio && node --max-old-space-size=4096 ../../node_modules/serverless/bin/serverless deploy -v function -f",
     "api-twilio:remove": "cd ./services/twilio && node --max-old-space-size=4096 ../../node_modules/serverless/bin/serverless remove -v",
     "api-twilio:offline": "cd ./services/twilio && node --max-old-space-size=4096 ../../node_modules/serverless/bin/serverless offline start -v",
     "api-contacts:format": "prettier --write \"services/contacts/handler.ts\"",

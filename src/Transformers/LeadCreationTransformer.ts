@@ -48,6 +48,7 @@ class LeadCreationTransformer implements DataTransformer {
         longitude: data.longitude,
         locale: data.locale,
         conditions: data.conditions,
+        mailing: (data.mailing) ? 1 : 0,
       },
     }
   }

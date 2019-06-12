@@ -118,6 +118,18 @@ functions:
           cors:
             origins: ${self:custom.cors.${self:custom.stage}
 
+  resend-fast-creation:
+    handler: handler.resendFastCreation
+    environment:
+      USER_POOL:
+        Ref: ContactsCognitoUserPool
+    events:
+      - http:
+          method: post
+          path: contact/resend-fast-signup
+          cors:
+            origins: ${self:custom.cors.${self:custom.stage}
+
   contact-add-user:
     handler: handler.addUser
     environment:
@@ -402,6 +414,30 @@ functions:
               - withCredentials
             allowCredentials: true
             cacheControl: 'max-age=600, s-maxage=600, proxy-revalidate'
+
+  contact-set-verify-phone-false:
+    handler: handler.setVerifyPhoneFalse
+    environment:
+      USER_POOL:
+        Ref: ContactsCognitoUserPool
+    events:
+      - http:
+          method: get
+          path: contact-set-verify-phone-false
+          cors:
+            origins: '*'
+
+  contact-verify-phone-number:
+    handler: handler.verifyPhoneNumber
+    environment:
+      USER_POOL:
+        Ref: ContactsCognitoUserPool
+    events:
+      - http:
+          method: get
+          path: contact-verify-phone-number
+          cors:
+            origins: '*'
 
 
 

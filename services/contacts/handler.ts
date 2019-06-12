@@ -26,8 +26,10 @@ import MailchimpContactAddUserTransformer from '../../src/Transformers/Mailchimp
 import MailingController from '../../src/Controllers/MailingController'
 import CognitoServiceProviderClient from '../../src/Clients/CognitoServiceProviderClient'
 import ContactAndOrganizationTransformer from '../../src/Transformers/ContactAndOrganizationTransformer'
+import PhoneNumberTransformer from '../../src/Transformers/PhoneNumberTransformer'
 
 import logger from '../../src/Helpers/logger'
+
 
 const twilioClient = new TwilioClient()
 
@@ -528,6 +530,26 @@ export const fastCreation: APIGatewayProxyHandler = async event => {
 
     logger('Contractor Creation', 'generic', 'end')
     return new ResponseFactory().build(contact, event.headers.origin)
+  } catch (err) {
+    logger('Contractor Creation', 'generic', 'end', 'error')
+    return new ErrorFactory().build(err, event.headers.origin)
+  }
+}
+
+export const resendFastCreation: APIGatewayProxyHandler = async event => {
+  try {
+    const parsedData = new BodyParserTransformer().transform(event.body)
+
+    if (typeof parsedData.email === 'undefined') {
+      throw 'Must specify an email address'
+    }
+
+    const cognitoUser = await cognitoIdentityClient.resendUserPassword(parsedData)
+
+    return new ResponseFactory().build({
+      status: 200,
+      data: cognitoUser,
+    }, event.headers.origin)
   } catch (err) {
     logger('Contractor Creation', 'generic', 'end', 'error')
     return new ErrorFactory().build(err, event.headers.origin)
@@ -1729,6 +1751,126 @@ export const registerToNotification: APIGatewayProxyHandler = async event => {
         data: {
           success: true,
           registration,
+        },
+      },
+      event.headers.origin
+    )
+  } catch (err) {
+    logger('Contractor Register Notification', 'all', 'end', 'error')
+    return new ErrorFactory().build(err, event.headers.origin)
+  }
+}
+
+export const setVerifyPhoneFalse: APIGatewayProxyHandler = async event => {
+  try {
+    function updateListing(paginationToken) {
+      return new Promise(async (resolve, reject) => {
+        const cognitoUsers = await cognitoIdentityClient.listUsers(paginationToken)
+
+        const list = []
+
+        cognitoUsers.Users.forEach((user) => {
+          let verifiedAttr = false
+
+          user.Attributes.forEach(attr => {
+            if (attr.Name === 'phone_number_verified') {
+              verifiedAttr = true
+            }
+          })
+
+          if (verifiedAttr === false) {
+            list.push(user.Username)
+          }
+        })
+
+        await Promise.all(list.map((username) => {
+          const updateCognitoUser = cognitoIdentityClient.updateUserAttributes(
+            {
+              cognitoSub: username,
+              userPoolId: process.env.USER_POOL,
+            },
+            {
+              'phone_number_verified': false,
+            }
+          )
+
+          return updateCognitoUser
+        }))
+
+        if (cognitoUsers.PaginationToken) {
+          return updateListing(cognitoUsers.PaginationToken)
+        } else {
+          resolve()
+        }
+      })
+    }
+
+    await updateListing(null)
+
+    return new ResponseFactory().build(
+      {
+        status: 200,
+        data: {
+          success: true,
+        },
+      },
+      event.headers.origin
+    )
+  } catch (err) {
+    logger('Contractor Register Notification', 'all', 'end', 'error')
+    return new ErrorFactory().build(err, event.headers.origin)
+  }
+}
+
+export const verifyPhoneNumber: APIGatewayProxyHandler = async event => {
+  try {
+    const phoneTransformer = new PhoneNumberTransformer()
+
+    function notifyListing(paginationToken) {
+      return new Promise(async (resolve, reject) => {
+        const cognitoUsers = await cognitoIdentityClient.listUsers(paginationToken)
+
+        const list = []
+
+        cognitoUsers.Users.forEach((user) => {
+          let verifiedAttr = false
+
+          user.Attributes.forEach(attr => {
+            if (attr.Name === 'phone_number_verified' && attr.Value === 'true') {
+              verifiedAttr = true
+            }
+          })
+
+          if (verifiedAttr === false) {
+            user.Attributes.forEach(attr => {
+              if (attr.Name === 'phone_number') {
+                list.push(attr.Value)
+              }
+            })
+          }
+        })
+
+        const sms = await Promise.all(list.map((phone) => {
+          return twilioClient.sendSMS(
+            phoneTransformer.transform(phone), '* Message de Conecto *\n\nVérification de votre numéro de cellulaire. Répondez "Conecto"'
+          )
+        }))
+
+        if (cognitoUsers.PaginationToken) {
+          return notifyListing(cognitoUsers.PaginationToken)
+        } else {
+          resolve()
+        }
+      })
+    }
+
+    await notifyListing(null)
+
+    return new ResponseFactory().build(
+      {
+        status: 200,
+        data: {
+          success: true,
         },
       },
       event.headers.origin

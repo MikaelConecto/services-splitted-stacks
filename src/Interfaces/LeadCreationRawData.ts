@@ -16,6 +16,7 @@ interface LeadCreationRawData {
   longitude: number
   locale: string
   conditions: boolean
+  mailing: number
 }
 
 export default LeadCreationRawData

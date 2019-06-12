@@ -112,7 +112,7 @@ class CognitoServiceProviderClient {
   async createUser(data) {
     const cognitoUser = await this.engine.adminCreateUser({
       UserPoolId: process.env.USER_POOL,
-      Username: data.email,
+      Username: data.email.toLowerCase(),
       TemporaryPassword: `${nanoidGenerate('abcdefghijklmnopqrstuvwxyz', 4)}${nanoidGenerate('ABCDEFGHIJKLMNOPQRSTUVWXYZ', 4)}${nanoidGenerate('0123456789', 4)}`,
       DesiredDeliveryMediums: ['EMAIL'],
       UserAttributes: [{
@@ -125,6 +125,9 @@ class CognitoServiceProviderClient {
         Name: 'phone_number',
         Value: data.tel,
       }, {
+        Name: 'phone_number_verified',
+        Value: 'false',
+      }, {
         Name: 'address',
         Value: data.companyNumber +
           ' ' +
@@ -135,6 +138,33 @@ class CognitoServiceProviderClient {
           data.companyPostalCode,
       }]
     }).promise()
+
+    return cognitoUser
+  }
+
+  async resendUserPassword(data) {
+    const cognitoUser = await this.engine.adminCreateUser({
+      UserPoolId: process.env.USER_POOL,
+      Username: data.email,
+      TemporaryPassword: `${nanoidGenerate('abcdefghijklmnopqrstuvwxyz', 4)}${nanoidGenerate('ABCDEFGHIJKLMNOPQRSTUVWXYZ', 4)}${nanoidGenerate('0123456789', 4)}`,
+      MessageAction: 'RESEND',
+      DesiredDeliveryMediums: ['EMAIL'],
+    }).promise()
+
+    return cognitoUser
+  }
+
+  async listUsers(paginationToken = null, customParams = {}) {
+    const params = {
+      UserPoolId: process.env.USER_POOL,
+      ...customParams,
+    }
+
+    if (paginationToken !== null) {
+      params.PaginationToken = paginationToken
+    }
+
+    const cognitoUser = await this.engine.listUsers(params).promise()
 
     return cognitoUser
   }

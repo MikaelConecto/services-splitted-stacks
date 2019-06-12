@@ -72,6 +72,17 @@ functions:
             allowCredentials: true
             cacheControl: 'max-age=600, s-maxage=600, proxy-revalidate'
 
+  receive-sms:
+    handler: handler.receiveSms
+    environment:
+      USER_POOL: ${self:provider.ContactsCognitoUserPool}
+    events:
+      - http:
+          method: post
+          path: receive-sms
+          cors:
+            origins: '*'
+
 
 resources:
   Outputs:
