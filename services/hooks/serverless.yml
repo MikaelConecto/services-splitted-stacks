@@ -53,6 +53,8 @@ functions:
   on-new-deal:
     handler: handler.onNewDeal
     timeout: 30
+    environment:
+      USER_POOL: ${self:provider.ContactsCognitoUserPool}
     events:
       - http:
           method: post

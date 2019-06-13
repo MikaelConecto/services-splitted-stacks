@@ -1,5 +1,4 @@
 import { APIGatewayProxyHandler } from 'aws-lambda'
-import { BitlyClient } from 'bitly'
 import Cryptr from 'cryptr'
 import nanoidGenerate from 'nanoid/generate'
 
@@ -7,9 +6,11 @@ import TwilioClient from '../../src/Clients/TwilioClient'
 import MandrillClient from '../../src/Clients/MandrillClient'
 import AxiosClient from '../../src/Clients/AxiosClient'
 import DynamoDBClient from '../../src/Clients/DynamoDBClient'
+import CognitoServiceProviderClient from '../../src/Clients/CognitoServiceProviderClient'
 
 import ContactsController from '../../src/Controllers/ContactsController'
 import DealsController from '../../src/Controllers/DealsController'
+import ShortCmController from '../../src/Controllers/ShortCmController'
 
 import PhoneNumberTransformer from '../../src/Transformers/PhoneNumberTransformer'
 import BodyParserTransformer from '../../src/Transformers/BodyParserTransformer'
@@ -22,7 +23,6 @@ const cryptr = new Cryptr(process.env.CRYPTR_SECRET_KEY)
 const dynamoDb = new DynamoDBClient()
 const twilioClient = new TwilioClient()
 const mandrillClient = new MandrillClient()
-const bitlyClient = new BitlyClient(process.env.BITLY_ACCESS_TOKEN)
 const phoneTransformer = new PhoneNumberTransformer()
 
 import logger from '../../src/Helpers/logger'
@@ -31,6 +31,9 @@ import labelsJobType from '../../src/Helpers/labelsJobType'
 import downloadFromUrlToS3 from '../../src/Helpers/downloadFromUrlToS3'
 import mapStyle from '../../src/Helpers/mapStyle'
 import staticMapStyleGenerator from '../../src/Helpers/staticMapStyleGenerator'
+
+
+const cognitoIdentityClient = new CognitoServiceProviderClient()
 
 export const onNewDeal: APIGatewayProxyHandler = async event => {
   logger('Hook On New Deal', 'generic', 'begin')
@@ -48,9 +51,20 @@ export const onNewDeal: APIGatewayProxyHandler = async event => {
         'Content-Type': 'application/json',
       },
     })
+    console.log(process.env.SHORT_CM_URL, process.env.SHORT_CM_KEY)
+    const shortCmClient = new AxiosClient({
+      baseURL: process.env.SHORT_CM_URL,
+      timeout: 3000,
+      headers: {
+        Authorization: process.env.SHORT_CM_KEY,
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+    })
 
     const Contacts = new ContactsController(crmClient)
     const Deals = new DealsController(crmClient)
+    const ShortCm = new ShortCmController(shortCmClient)
 
     logger(
       'Hook On New Deal',
@@ -245,13 +259,19 @@ export const onNewDeal: APIGatewayProxyHandler = async event => {
             'generic',
             'write',
             'request',
-            `Bit.ly SMS Link Creation`
+            `Short.cm SMS Link Creation`
           )
-          const bitlyLinkSMS = bitlyClient.shorten(
-            `${urlTo}${
+          const shortCmLinkSms = ShortCm.create({
+            originalURL: `${urlTo}${
               process.env.ACCEPTANCE_PAGE_URL
-              }?d=${encryptedDealId}&c=${encryptedCompanyId}&t=sms`
-          )
+              }?d=${encryptedDealId}&c=${encryptedCompanyId}&t=sms`,
+            domain: 'opp.conecto.ca',
+            tags: ['sms', process.env.NODE_ENV, companyId, dealInfosUUID],
+            utmSource: process.env.NODE_ENV,
+            utmMedium: 'email',
+            utmCampaign: 'notif-sys',
+            utmContent: `opp-${dealInfosUUID}`,
+          })
           logger(
             'Hook On New Deal',
             'generic',
@@ -259,15 +279,21 @@ export const onNewDeal: APIGatewayProxyHandler = async event => {
             'request',
             `Bit.ly EMAIL Link Creation`
           )
-          const bitlyLinkEMAIL = bitlyClient.shorten(
-            `${urlTo}${
+          const shortCmLinkEmail = ShortCm.create({
+            originalURL: `${urlTo}${
               process.env.ACCEPTANCE_PAGE_URL
-              }?d=${encryptedDealId}&c=${encryptedCompanyId}&t=email`
-          )
+              }?d=${encryptedDealId}&c=${encryptedCompanyId}&t=email`,
+            domain: 'opp.conecto.ca',
+            tags: ['email', process.env.NODE_ENV, companyId, dealInfosUUID],
+            utmSource: process.env.NODE_ENV,
+            utmMedium: 'email',
+            utmCampaign: 'notif-sys',
+            utmContent: `opp-${dealInfosUUID}`,
+          })
 
-          const bitlyPromises = await Promise.all([
-            bitlyLinkSMS,
-            bitlyLinkEMAIL,
+          const ShortCmPromises = await Promise.all([
+            shortCmLinkSms,
+            shortCmLinkEmail,
           ]).catch(e => {
             reject(e)
           })
@@ -284,14 +310,14 @@ export const onNewDeal: APIGatewayProxyHandler = async event => {
           console.log('company.data.custom_fields.locale', company.data.custom_fields.locale);
 
           const SMSNotification = {
-            fr: `* Nouvelle opportunité *\n\n${dealInfosUUID}\nVille de ${dealContactInfo.address.city} (${dealContactInfo.address.postal_code.substr(
+            fr: `* Message de Conecto * Nouvelle opportunité *\n\n${dealInfosUUID}\nVille de ${dealContactInfo.address.city} (${dealContactInfo.address.postal_code.substr(
               0,
               3
-            )}***)\nPente: ${labelsJobType[company.data.custom_fields.locale][`labelJobTypeSpecific_${dealInfo.custom_fields.jobTypeSpecific}`]}\nType: ${labelsJobType[company.data.custom_fields.locale][`labelJobType_${dealInfo.custom_fields.jobType}`]}\n\nAller sur la plateforme\n${bitlyPromises[0].url}`,
-            en: `* New opportunity *\n\n${dealInfosUUID}\n${dealContactInfo.address.city} (${dealContactInfo.address.postal_code.substr(
+            )}***)\nPente: ${labelsJobType[company.data.custom_fields.locale][`labelJobTypeSpecific_${dealInfo.custom_fields.jobTypeSpecific}`]}\nType: ${labelsJobType[company.data.custom_fields.locale][`labelJobType_${dealInfo.custom_fields.jobType}`]}\n\nAller sur la plateforme\n${ShortCmPromises[0].data.secureShortURL}`,
+            en: `* Message from Conecto * New opportunity *\n\n${dealInfosUUID}\n${dealContactInfo.address.city} (${dealContactInfo.address.postal_code.substr(
               0,
               3
-            )}***)\nSlope: ${labelsJobType[company.data.custom_fields.locale][`labelJobTypeSpecific_${dealInfo.custom_fields.jobTypeSpecific}`]}\nType: ${labelsJobType[company.data.custom_fields.locale][`labelJobType_${dealInfo.custom_fields.jobType}`]}\n\nGo on the platform:\n${bitlyPromises[0].url}`,
+            )}***)\nSlope: ${labelsJobType[company.data.custom_fields.locale][`labelJobTypeSpecific_${dealInfo.custom_fields.jobTypeSpecific}`]}\nType: ${labelsJobType[company.data.custom_fields.locale][`labelJobType_${dealInfo.custom_fields.jobType}`]}\n\nGo on the platform:\n${ShortCmPromises[0].data.secureShortURL}`,
           }
 
           logger(
@@ -301,9 +327,16 @@ export const onNewDeal: APIGatewayProxyHandler = async event => {
             'forEach',
             `Company Contacts`
           )
-          companyContactsQuery.data.items.forEach(companyContact => {
+          companyContactsQuery.data.items.forEach(async companyContact => {
             const companyContactInfos = companyContact.data
             let contactPromise = null
+
+            const contactCognito = await cognitoIdentityClient.getUser({
+              userPoolId: process.env.USER_POOL,
+              cognitoSub: companyContactInfos.custom_fields.cognitoSub,
+            })
+
+            console.log(contactCognito)
 
             if (companyContactInfos.custom_fields.activeForRoofing) {
               contactPromise = new Promise(async (resolve, reject) => {
@@ -324,6 +357,8 @@ export const onNewDeal: APIGatewayProxyHandler = async event => {
                   })
 
                   if (hasNotifications.Count === 0) {
+                    const promises = []
+
                     logger(
                       'Hook On New Deal',
                       'generic',
@@ -356,6 +391,7 @@ export const onNewDeal: APIGatewayProxyHandler = async event => {
                         updatedAt: dateNow,
                       },
                     })
+                    promises.push(notificationRequest)
 
                     logger(
                       'Hook On New Deal',
@@ -364,9 +400,15 @@ export const onNewDeal: APIGatewayProxyHandler = async event => {
                       'request',
                       `Twilio SMS - ContactPhone: ${companyContactInfos.phone}`
                     )
-                    const sms = twilioClient.sendSMS(
-                      phoneTransformer.transform(companyContactInfos.phone), SMSNotification[company.data.custom_fields.locale]
-                    )
+
+                    console.log('contactCognito', contactCognito)
+
+                    if (contactCognito.phone_number_verified === 'true') {
+                      const sms = twilioClient.sendSMS(
+                        phoneTransformer.transform(companyContactInfos.phone), SMSNotification[company.data.custom_fields.locale]
+                      )
+                      promises.push(sms)
+                    }
 
                     logger(
                       'Hook On New Deal',
@@ -412,12 +454,13 @@ export const onNewDeal: APIGatewayProxyHandler = async event => {
                       global_merge_vars: [
                         {
                           name: "acceptance_url",
-                          content: bitlyPromises[1].url
+                          content: ShortCmPromises[1].data.secureShortURL
                         }
                       ],
                     })
+                    promises.push(email)
 
-                    resolve(Promise.all([notificationRequest, sms, email]))
+                    resolve(Promise.all(promises))
                   } else {
                     resolve()
                   }
