@@ -16,8 +16,8 @@ interface TransformedCustomFields {
   latitude: number
   longitude: number
   locale: string
-  conditions: boolean
-  mailing: boolean
+  conditions: number
+  mailing: number
 }
 
 interface LeadCreationTransformedRawData {

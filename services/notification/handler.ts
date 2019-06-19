@@ -2,7 +2,6 @@ import { APIGatewayProxyHandler } from 'aws-lambda'
 import _ from 'lodash'
 import Cryptr from 'cryptr'
 import moment from 'moment'
-import { BitlyClient } from 'bitly'
 
 import AxiosClient from '../../src/Clients/AxiosClient'
 import TwilioClient from '../../src/Clients/TwilioClient'
@@ -10,6 +9,7 @@ import DynamoDBClient from '../../src/Clients/DynamoDBClient'
 
 import ContactsController from '../../src/Controllers/ContactsController'
 import DealsController from '../../src/Controllers/DealsController'
+import ShortCmController from '../../src/Controllers/ShortCmController'
 
 import ResponseFactory from '../../src/Factories/ResponseFactory'
 import ErrorFactory from '../../src/Factories/ErrorFactory'
@@ -20,13 +20,21 @@ import PhoneNumberTransformer from '../../src/Transformers/PhoneNumberTransforme
 const cryptr = new Cryptr(process.env.CRYPTR_SECRET_KEY)
 
 const twilioClient = new TwilioClient()
-const bitlyClient = new BitlyClient(process.env.BITLY_ACCESS_TOKEN)
 
 const crmClient = new AxiosClient({
   baseURL: process.env.ZENDESK_API_V2_URL,
   timeout: 3000,
   headers: {
     Authorization: `Bearer ${process.env.ZENDESK_API_TOKEN}`,
+    Accept: 'application/json',
+    'Content-Type': 'application/json',
+  },
+})
+const shortCmClient = new AxiosClient({
+  baseURL: process.env.SHORT_CM_URL,
+  timeout: 3000,
+  headers: {
+    Authorization: process.env.SHORT_CM_KEY,
     Accept: 'application/json',
     'Content-Type': 'application/json',
   },
@@ -93,6 +101,7 @@ export const fetch: APIGatewayProxyHandler = async event => {
     )
 
     const Deals = new DealsController(crmClient)
+    const ShortCm = new ShortCmController(shortCmClient)
     const currentDeal = await Deals.getInfoById(dealId)
     const associatedContactsNumber =
       currentDeal.data.data.associated_contacts.items.length
@@ -246,6 +255,7 @@ export const fetchEmittedDeals: APIGatewayProxyHandler = async event => {
         'request',
         'Get All Deals Infos'
       )
+      console.log('notifications.Items', notifications.Items)
       const dealsKeys = notifications.Items.map(notification => ({
         dealId: notification.dealId,
         dealInfosId: notification.dealInfosId,
@@ -399,34 +409,45 @@ export const notifyContactCustomer: APIGatewayProxyHandler = async event => {
               urlTo = process.env.CORS_ORIGIN_2
             }
 
+            const shortCmLinkSms = ShortCm.create({
+              originalURL: `${urlTo}/lead/${opportunity.deal.dealInfosId}?t=sms`,
+              domain: 'opp.conecto.ca',
+              tags: ['sms', process.env.NODE_ENV, companyId, opportunity.deal.dealInfosId],
+              utmSource: process.env.NODE_ENV,
+              utmMedium: 'sms',
+              utmCampaign: 'notif-sys',
+              utmContent: `reminder-${opportunity.deal.dealInfosId}`,
+            })
+            const shortCmLinkWeb = ShortCm.create({
+              originalURL: `${urlTo}/lead/${opportunity.deal.dealInfosId}?t=push-notif`,
+              domain: 'opp.conecto.ca',
+              tags: ['push-notif', process.env.NODE_ENV, companyId, opportunity.deal.dealInfosId],
+              utmSource: process.env.NODE_ENV,
+              utmMedium: 'push-notif',
+              utmCampaign: 'notif-sys',
+              utmContent: `reminder-${opportunity.deal.dealInfosId}`,
+            })
 
-            const bitlyLinkSMS = bitlyClient.shorten(
-              `${urlTo}/lead/${opportunity.deal.dealInfosId}?t=sms`
-            )
-            const bitlyLinkWeb = bitlyClient.shorten(
-              `${urlTo}/lead/${opportunity.deal.dealInfosId}?t=push-notif`
-            )
-
-            const bitlyPromises = await Promise.all([
-              bitlyLinkSMS,
-              bitlyLinkWeb,
+            const ShortCmPromises = await Promise.all([
+              shortCmLinkSms,
+              shortCmLinkWeb,
             ])
 
 
             const SMSNotification = {
-              fr: `* Opportunité à contacter *\n\n${opportunity.deal.dealInfosId}\n${opportunity.deal.firstName}, dans la ville de ${opportunity.deal.city}, a demandé à être contacté en ${(dayPart !== 'evening') ? dayPart : 'soirée'}\n\nAller sur la plateforme\n${bitlyPromises[0].url}`,
-              en: `* Opportunity to contact *\n\n${opportunity.deal.dealInfosId}\n${opportunity.deal.firstName}, in the city of ${opportunity.deal.city}, want to be contacted in the ${dayPart}\n\nGo on the platform:\n${bitlyPromises[0].url}`,
+              fr: `* Message de Conecto * Opportunité à contacter *\n\n${opportunity.deal.dealInfosId}\n${opportunity.deal.firstName}, dans la ville de ${opportunity.deal.city}, a demandé à être contacté en ${(dayPart !== 'evening') ? dayPart : 'soirée'}\n\nAller sur la plateforme\n${ShortCmPromises[0].data.secureShortURL}`,
+              en: `* Message from Conecto * Opportunity to contact *\n\n${opportunity.deal.dealInfosId}\n${opportunity.deal.firstName}, in the city of ${opportunity.deal.city}, want to be contacted in the ${dayPart}\n\nGo on the platform:\n${ShortCmPromises[0].data.secureShortURL}`,
             }
             const pushNotification = {
               fr: {
                 title: 'Opportunité à contacter',
                 message: `${opportunity.deal.firstName} veut être contacté en ${(dayPart !== 'evening') ? dayPart : 'soirée'}. Cliquez pour voir l'opportunité`,
-                action: bitlyPromises[1].url,
+                action: ShortCmPromises[1].data.secureShortURL,
               },
               en: {
                 title: 'Opportunity to contact',
                 message: `${opportunity.deal.firstName} want to be contact in ${(dayPart !== 'evening') ? dayPart : 'soirée'}. Click here to see the opportunity`,
-                action: bitlyPromises[1].url,
+                action: ShortCmPromises[1].data.secureShortURL,
               },
             }
 

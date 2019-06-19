@@ -23,6 +23,7 @@
     "api-deals:remove": "cd ./services/deals && node --max-old-space-size=4096 ../../node_modules/serverless/bin/serverless remove -v",
     "api-deals:offline": "cd ./services/deals && node --max-old-space-size=4096 ../../node_modules/serverless/bin/serverless offline start -v",
     "api-hooks:deploy": "cd ./services/hooks && node --max-old-space-size=4096 ../../node_modules/serverless/bin/serverless deploy -v",
+    "api-hooks:deploy-single": "cd ./services/hooks && node --max-old-space-size=4096 ../../node_modules/serverless/bin/serverless deploy -v function -f",
     "api-hooks:remove": "cd ./services/hooks && node --max-old-space-size=4096 ../../node_modules/serverless/bin/serverless remove -v",
     "api-hooks:offline": "cd ./services/hooks && node --max-old-space-size=4096 ../../node_modules/serverless/bin/serverless offline start -v",
     "api-leads:deploy": "cd ./services/leads && node --max-old-space-size=4096 ../../node_modules/serverless/bin/serverless deploy -v",

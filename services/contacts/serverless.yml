@@ -439,6 +439,18 @@ functions:
           cors:
             origins: '*'
 
+  verify-single-number:
+    handler: handler.verifySinglePhoneNumber
+    environment:
+      USER_POOL:
+        Ref: ContactsCognitoUserPool
+    events:
+      - http:
+          method: post
+          path: contact-verify-single-phone-number
+          cors:
+            origins: ${self:custom.cors.${self:custom.stage}
+
 
 
 

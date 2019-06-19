@@ -42,7 +42,6 @@ export const creation: APIGatewayProxyHandler = async event => {
       'preferredContactMethod',
       'preferredContactTime',
       'conditions',
-      'mailing',
       'locale',
     ])
     const leadsClient = new AxiosClient({

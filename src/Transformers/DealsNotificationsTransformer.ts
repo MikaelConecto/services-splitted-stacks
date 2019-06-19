@@ -7,6 +7,7 @@ const cryptr = new Cryptr(process.env.CRYPTR_SECRET_KEY)
 
 class DealsNotificationsTransformer implements DataTransformer {
   transformResponseData(response: any, requestType: string): any {
+    try {
     const opportunities = []
     const dealsById = {}
 
@@ -16,8 +17,11 @@ class DealsNotificationsTransformer implements DataTransformer {
       })
     }
 
+    console.log('dealsById', dealsById)
+
     if (response.notifications.Items.length > 0) {
       _.uniqBy(response.notifications.Items, 'dealInfosId').forEach(notification => {
+        console.log('DATA NOTIF', notification)
         const encryptedDealId = cryptr.encrypt(
           dealsById[notification.dealInfosId].dealId
         )
@@ -108,6 +112,10 @@ class DealsNotificationsTransformer implements DataTransformer {
     }
 
     return opportunities.sort((a, b) => a.createdAt - b.createdAt).reverse()
+    } catch (e) {
+      console.log('transformer error', e)
+      throw e
+    }
   }
 }
 
