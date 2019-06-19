@@ -61,3 +61,15 @@ functions:
           path: hooks/on-new-deal
           cors:
             origin: '*' # Must stay * for Zapier
+
+  manual-new-deal:
+    handler: handler.manualNewDeal
+    timeout: 30
+    environment:
+      USER_POOL: ${self:provider.ContactsCognitoUserPool}
+    events:
+      - http:
+          method: post
+          path: hooks/manual-new-deal
+          cors:
+            origin: '*' # Must stay * for Zapier

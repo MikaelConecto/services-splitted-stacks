@@ -1880,3 +1880,62 @@ export const verifyPhoneNumber: APIGatewayProxyHandler = async event => {
     return new ErrorFactory().build(err, event.headers.origin)
   }
 }
+
+export const verifySinglePhoneNumber: APIGatewayProxyHandler = async event => {
+  try {
+    let cognitoUsers
+    const list = []
+    const parsedData = new BodyParserTransformer().transform(event.body)
+
+    if (typeof parsedData.tel !== 'undefined') {
+      const phoneTransformer = new PhoneNumberTransformer()
+      const phoneNumber = phoneTransformer.transform(parsedData.tel)
+
+      cognitoUsers = await cognitoIdentityClient.listUsers(null,{
+        Filter: `phone_number = "${phoneNumber}"`
+      })
+    } else {
+      cognitoUsers = await cognitoIdentityClient.listUsers(null, {
+        Filter: `email = "${parsedData.email}"`
+      })
+    }
+
+    cognitoUsers.Users.forEach((cognitoUser) => {
+      let isConfirmed = false
+
+      cognitoUser.Attributes.forEach(attr => {
+        if (attr.Name === 'phone_number_verified' && attr.Value === 'true') {
+          isConfirmed = true
+        }
+      })
+
+      if (isConfirmed === false) {
+        cognitoUser.Attributes.forEach(attr => {
+          if (attr.Name === 'phone_number') {
+            list.push(attr.Value)
+          }
+        })
+      }
+    })
+
+    await Promise.all(list.map((phone) => {
+      return twilioClient.sendSMS(
+        phone, '* Message de Conecto *\n\nVérification de votre numéro de cellulaire. Répondez "Conecto"'
+      )
+    }))
+
+    return new ResponseFactory().build(
+      {
+        status: 200,
+        data: {
+          success: true,
+          cognitoUsers,
+        },
+      },
+      event.headers.origin
+    )
+  } catch (err) {
+    logger('Contractor Register Notification', 'all', 'end', 'error')
+    return new ErrorFactory().build(err, event.headers.origin)
+  }
+}

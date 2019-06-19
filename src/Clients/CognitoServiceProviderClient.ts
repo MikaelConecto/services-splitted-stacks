@@ -45,7 +45,7 @@ class CognitoServiceProviderClient {
         .listUsers({
           UserPoolId: userPoolId,
           Limit: 1,
-          Filter: `sub="${cognitoSub}"`,
+          // Filter: `sub="${cognitoSub}"`,
         })
         .promise()
 

@@ -226,7 +226,7 @@ class ContactsController {
     try {
       console.log('searchFor', params)
       const responseContact = await this.model.findAll(params)
-      console.log('searchFor responseContact', responseContact)
+      console.log('searchFor responseContact', responseContact.data.items)
 
       return responseContact
     } catch (e) {
