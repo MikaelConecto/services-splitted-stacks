@@ -51,7 +51,7 @@
     "mandrill-api": "^1.0.45",
     "mapbox": "^1.0.0-beta10",
     "moment": "^2.24.0",
-    "nanoid": "^2.0.3",
+    "nanoid": "^3.1.31",
     "qs": "^6.7.0",
     "redis": "^2.8.0",
     "stripe": "^7.1.0",
